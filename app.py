@@ -173,14 +173,60 @@ def room(room_id):
 # -------------------------------- API ROUTES ----------------------------------
 
 # POST to change the user's name
-@app.route('/api/user/name')
+@app.route('/api/profile/name', methods=['POST'])
 def update_username():
-    return {}, 403
+    new_name = request.json.get('newUserName')
+    user = get_user_from_cookie(request)
+    print(user['id'])
+    
+    query_db('UPDATE users SET name = ? WHERE id = ?;', [new_name, user['id']])
+    return {}    
 
 # POST to change the user's password
+@app.route('/api/profile/pass', methods=['POST'])
+def update_password():
+    new_pass = request.json.get("newPassword")
+    user = get_user_from_cookie(request)
+
+    print(new_pass)
+    
+    query_db('UPDATE users SET password = ? WHERE id = ?;', [new_pass, user['id']])
+    return {}
 
 # POST to change the name of a room
+@app.route('/api/rooms/<int:room_id>', methods=['POST'])
+def change_room_name(room_id):
+    new_name = request.json.get('newName')
+
+    query_db('UPDATE rooms SET name = ? WHERE id = ?;', [new_name, room_id])
+    return {}
 
 # GET to get all the messages in a room
+@app.route('/api/rooms/<int:room_id>/messages', methods=['GET'])
+def get_messages(room_id):
+
+    messages = query_db('SELECT * FROM messages LEFT JOIN users ON messages.user_id = users.id WHERE messages.room_id = ?;', [room_id])
+
+    messages_lst = []
+    
+    # Loop through SQL lite row objects and create list of dicts
+    for row in messages:
+        messages_dict = {}
+        messages_dict['id'] = row['id']
+        messages_dict ['name'] = row['name'] 
+        messages_dict['room_id'] = row['room_id']
+        messages_dict['body'] = row['body']
+        
+        messages_lst.append(messages_dict)
+    
+    return jsonify(messages_lst)
 
 # POST to post a new message to a room
+@app.route('/api/rooms/<int:room_id>/messages', methods=['POST'])
+def post_message(room_id):
+    user = get_user_from_cookie(request)
+    message = request.json.get("newMessage")
+    
+    message = query_db('INSERT INTO messages (user_id, room_id, body) VALUES (?, ?, ?)', [user['id'], room_id, message])
+    
+    return {}
